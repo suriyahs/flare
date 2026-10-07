@@ -1,0 +1,59 @@
+#!/bin/bash
+# flare-upload: move a clip to a local archive, upload it to Cloudflare R2,
+# copy a public link, and optionally back it up to Proton Drive.
+
+CONFIG="${FLARE_CONFIG:-$HOME/.config/flare/config}"
+if [[ ! -f "$CONFIG" ]]; then
+    notify-send "flare" "missing config: $CONFIG" -i dialog-error
+    exit 1
+fi
+# shellcheck disable=SC1090
+source "$CONFIG"
+
+FILE="$(readlink -f -- "$1")"
+ENDPOINT_URL="https://${ACCOUNT_ID}.r2.cloudflarestorage.com"
+LOG_FILE="${LOG_FILE:-/tmp/flare-upload.log}"
+PROTON_BIN="${PROTON_BIN:-$(command -v proton-drive)}"
+
+echo "--- uploading $(basename "$FILE") ---" >> "$LOG_FILE"
+
+if [[ ! -f "$FILE" ]]; then
+    echo "error: $FILE is not a file" >> "$LOG_FILE"
+    notify-send "flare" "file not found, nothing uploaded." -i dialog-error
+    exit 1
+fi
+
+mkdir -p "$ARCHIVE_DIR"
+notify-send "flare" "uploading $(basename "$FILE") to r2..." -i video-x-generic
+
+FILENAME=$(basename "$FILE")
+BASENAME="${FILENAME%.*}"
+EXTENSION="${FILENAME##*.}"
+HASH=$(tr -dc 'a-z0-9' < /dev/urandom | head -c 6)
+NEW_FILENAME="${BASENAME}-${HASH}.${EXTENSION}"
+SLUG="${BASENAME}-${HASH}"
+NEW_FILE_PATH="$ARCHIVE_DIR/$NEW_FILENAME"
+
+# move the real file first so every upload uses the collision-proof name
+if ! mv -- "$FILE" "$NEW_FILE_PATH" >> "$LOG_FILE" 2>&1; then
+    notify-send "flare" "could not move the file, stopping." -i dialog-error
+    exit 1
+fi
+
+if aws s3 cp "$NEW_FILE_PATH" "s3://$BUCKET_NAME/$NEW_FILENAME" --endpoint-url "$ENDPOINT_URL" >> "$LOG_FILE" 2>&1; then
+    echo -n "https://$DOMAIN/$SLUG" | wl-copy
+    notify-send "flare" "link copied." -i video-x-generic
+else
+    notify-send "flare" "r2 upload failed, see $LOG_FILE" -i dialog-error
+fi
+
+if [[ -n "$PROTON_DEST" && -n "$PROTON_BIN" ]]; then
+    notify-send "flare" "backing up to proton drive..." -i video-x-generic
+    if "$PROTON_BIN" filesystem upload "$NEW_FILE_PATH" "$PROTON_DEST" >> "$LOG_FILE" 2>&1; then
+        notify-send "flare" "backup complete." -i emblem-default
+    else
+        notify-send "flare" "proton drive backup failed, see $LOG_FILE" -i dialog-error
+    fi
+fi
+
+echo "--- finished ---" >> "$LOG_FILE"

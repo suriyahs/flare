@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Service
+MimeType=video/*;
+Actions=uploadtoflare;
+X-KDE-Priority=TopLevel
+
+[Desktop Action uploadtoflare]
+Name=upload to flare
+Icon=@HOME@/.local/share/flare/flare.png
+Exec=bash @HOME@/.local/bin/flare-upload "%f"

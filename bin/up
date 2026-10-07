@@ -1,0 +1,65 @@
+#!/bin/bash
+
+# cache sudo once so dnf and the vice installer don't prompt mid-run
+sudo -v || exit 1
+
+echo "updating dnf packages..."
+sudo dnf upgrade --refresh -y
+
+echo "updating flatpaks..."
+flatpak update -y
+
+echo "updating spicetify..."
+SPICETIFY_RESULT=$(spicetify upgrade)
+echo "$SPICETIFY_RESULT"
+if [[ "$SPICETIFY_RESULT" != *"Spicetify is up-to-date."* ]]; then
+    echo "new spicetify update found, running installer..."
+    spicetify apply
+else
+    echo "spicetify is already up to date, skipping install."
+fi
+
+echo "updating flare (vice fork)..."
+(
+  cd "$HOME/projects/tools/flare-app" || { echo "flare: repo not found"; exit 1; }
+
+  if [ "$(git branch --show-current)" != "flare" ]; then
+    echo "flare: not on the flare branch, skipping"
+    exit 1
+  fi
+
+  git fetch upstream || exit 1
+
+  # drop the generated rebrand edits so the tree is clean before merging
+  git restore ui-src/locales/en.json vice/ui 2>/dev/null
+
+  if [ -n "$(git status --porcelain)" ]; then
+    echo "flare: uncommitted changes, resolve them first. skipping."
+    exit 1
+  fi
+
+  if [ -z "$(git log --oneline HEAD..upstream/main)" ]; then
+    echo "flare is already up to date, skipping install."
+    exit 0
+  fi
+
+  echo "new vice commits:"
+  git log --oneline HEAD..upstream/main
+
+  git merge --ff-only upstream/main || {
+    echo "flare: branch has its own commits, merge by hand."
+    exit 1
+  }
+
+  flare-rebrand pre || { echo "flare: rebrand failed, NOT installing."; exit 1; }
+  python3 -m py_compile vice/main.py || { echo "flare: syntax error, NOT installing."; exit 1; }
+
+  echo "running installer..."
+  ./install.sh && flare-rebrand post && systemctl --user restart vice || exit 1
+)
+
+echo "checking for hardware firmware updates..."
+fwupdmgr refresh --force > /dev/null 2>&1
+fwupdmgr get-updates
+
+echo "all updates completed."

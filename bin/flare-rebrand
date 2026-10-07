@@ -1,0 +1,33 @@
+#!/bin/bash
+# usage: flare-rebrand pre   (before building/installing)
+#        flare-rebrand post  (after install.sh)
+set -e
+REPO="$HOME/projects/tools/flare-app"
+FLARE_ICON="$HOME/.local/share/flare/flare.png"
+
+case "$1" in
+pre)
+  cd "$REPO"
+  f=ui-src/locales/en.json
+  before=$(grep -c '\bVice\b' "$f")
+  [ "$before" -gt 0 ] || { echo "flare-rebrand: no 'Vice' left in $f, upstream changed?"; exit 1; }
+  sed -i 's/Vice keeps recording/@@KEEP@@/; s/\bVice\b/flare/g; s/Vice_Clip_12/flare_clip_12/; s/@@KEEP@@/Vice keeps recording/' "$f"
+  python3 -c "import json; json.load(open('$f'))"
+  npm run build >/dev/null
+  echo "flare-rebrand: rewrote $before lines, bundle rebuilt"
+  ;;
+post)
+  d="$HOME/.local/share/applications/vice.desktop"
+  [ -f "$d" ] || { echo "flare-rebrand: $d not found"; exit 1; }
+  sed -i 's/^Name=.*/Name=flare/; s/^Comment=.*/Comment=flare, a fork of Vice for recording game clips/' "$d"
+  while IFS= read -r icon; do
+    case "$icon" in
+      *.png) size=$(magick identify -format %wx%h "$icon"); magick "$FLARE_ICON" -resize "$size" "$icon" ;;
+      *) echo "flare-rebrand: skipped $icon (not png)" ;;
+    esac
+  done < <(find "$HOME/.local/share/icons" -name 'vice.*' 2>/dev/null)
+  update-desktop-database "$HOME/.local/share/applications" 2>/dev/null || true
+  echo "flare-rebrand: launcher patched"
+  ;;
+*) echo "usage: flare-rebrand pre|post"; exit 1 ;;
+esac

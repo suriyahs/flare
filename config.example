@@ -1,0 +1,7 @@
+# copy to ~/.config/flare/config and fill in
+ACCOUNT_ID="your-cloudflare-account-id"
+BUCKET_NAME="vice-clips"
+DOMAIN="clips.ahsoorah.fyi"
+ARCHIVE_DIR="$HOME/Videos/flare clips local"
+# leave empty to skip the proton drive backup
+PROTON_DEST="/my-files/flare clips"
