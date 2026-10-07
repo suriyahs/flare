@@ -123,7 +123,7 @@ The maintainer set clear requirements on both (naming, settings, no silent failu
 ```
 bin/flare-upload      the right-click pipeline
 bin/flare-rebrand     rebrand layer applied after each Vice update
-bin/up                system update script (dnf, flatpak, spicetify, Vice, firmware)
+bin/up                system update script (includes vice to flare patching logic)
 dolphin/              the KDE service-menu template
 worker/index.js       the Cloudflare Worker
 config.example        settings the scripts read from ~/.config/flare/config
