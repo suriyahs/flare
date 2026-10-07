@@ -9,17 +9,7 @@ sudo dnf upgrade --refresh -y
 echo "updating flatpaks..."
 flatpak update -y
 
-echo "updating spicetify..."
-SPICETIFY_RESULT=$(spicetify upgrade)
-echo "$SPICETIFY_RESULT"
-if [[ "$SPICETIFY_RESULT" != *"Spicetify is up-to-date."* ]]; then
-    echo "new spicetify update found, running installer..."
-    spicetify apply
-else
-    echo "spicetify is already up to date, skipping install."
-fi
-
-echo "updating flare (vice fork)..."
+echo "updating flare..."
 (
   cd "$HOME/projects/tools/flare-app" || { echo "flare: repo not found"; exit 1; }
 
