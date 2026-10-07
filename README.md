@@ -4,8 +4,6 @@ A personal clip-recording pipeline for Linux: record with [Vice](https://github.
 
 I built this for myself and I'm publishing it as a write-up, not a product. It's tuned to my machine and workflow (Fedora KDE, Wayland, an NVIDIA GPU).
 
-**Example link:** https://clips.ahsoorah.fyi/(add later)
-
 ![Link embed in Discord](assets/linkembed.png)
 
 ---
